@@ -6,7 +6,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+
 import it.polito.tdp.PremierLeague.model.Action;
+import it.polito.tdp.PremierLeague.model.Arco;
 import it.polito.tdp.PremierLeague.model.Match;
 import it.polito.tdp.PremierLeague.model.Player;
 
@@ -79,6 +82,63 @@ public class PremierLeagueDAO {
 				
 				result.add(match);
 
+			}
+			conn.close();
+			return result;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	public List<Match> getAllVertici(int mese) {
+		String sql = "SELECT m.MatchID, m.TeamHomeID, m.TeamAwayID, m.teamHomeFormation, m.teamAwayFormation, m.resultOfTeamHome, m.date, t1.Name, t2.Name   "
+				+ "FROM Matches m, Teams t1, Teams t2 "
+				+ "WHERE m.TeamHomeID = t1.TeamID AND m.TeamAwayID = t2.TeamID AND MONTH(m.Date) = ?";
+		List<Match> result = new ArrayList<Match>();
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, mese);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+				Match match = new Match(res.getInt("m.MatchID"), res.getInt("m.TeamHomeID"), res.getInt("m.TeamAwayID"), res.getInt("m.teamHomeFormation"), 
+							res.getInt("m.teamAwayFormation"),res.getInt("m.resultOfTeamHome"), res.getTimestamp("m.date").toLocalDateTime(), res.getString("t1.Name"),res.getString("t2.Name"));
+				result.add(match);
+
+			}
+			conn.close();
+			return result;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			return null;
+		}
+	}
+
+	public List<Arco> getAllArchi(Map<Integer,Match> mappaPartite, int minuti) {
+		String sql = "SELECT DISTINCT a1.MatchID m1, a2.MatchID m2, COUNT(DISTINCT a1.PlayerID) peso "
+				+ "FROM actions a1, actions a2 "
+				+ "WHERE a1.MatchID > a2.MatchID "
+				+ "AND a1.PlayerID = a2.PlayerID "
+				+ "AND a1.TimePlayed > ? "
+				+ "GROUP BY a1.MatchID, a2.MatchID";
+		List<Arco> result = new ArrayList<Arco>();
+		Connection conn = DBConnect.getConnection();
+
+		try {
+			PreparedStatement st = conn.prepareStatement(sql);
+			st.setInt(1, minuti);
+			ResultSet res = st.executeQuery();
+			while (res.next()) {
+				Match m1 = mappaPartite.get(res.getInt("m1"));
+				Match m2 = mappaPartite.get(res.getInt("m2"));
+				if(m1 != null && m2 != null) {
+					Arco arco = new Arco(m1,res.getInt("peso"),m2);
+					result.add(arco);
+				}
 			}
 			conn.close();
 			return result;
